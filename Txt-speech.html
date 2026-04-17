@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Text to Speech Converter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .container { display: inline-block; height: 100vh; width: 100vw; background: linear-gradient(to bottom right, rgb(2, 184, 184), rgb(174, 0, 255)); }
+        h1 { font-size: 40px; display: block; text-align: center; margin-top: 15vh; color: white; }
+        textarea { display: block; font-size: 24px; width: 75vw; height: 30vh; margin: 3vh auto; border-radius: 20px; outline: none; border: 2px solid purple; background: rgba(255, 255, 255, 0.75); padding: 1rem; resize: vertical; }
+        .txt { width: 90vw; margin: 0 auto; text-align: center; }
+        select, button { margin: 0.8rem 0.4rem; padding: 0.8rem 1rem; border-radius: 15px; outline: none; border: 2px solid rgba(255,255,255,0.7); background: rgb(161,114,247); color: white; font-size: 1rem; cursor: pointer; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TEXT TO VOICE CONVERTER</h1>
+        <textarea id="text-input" placeholder="Enter text here..."></textarea>
+        <div class="txt">
+            <select id="voice-select"><option value="">Select Voice</option></select>
+            <button id="play-btn">Play</button>
+            <button id="pause-btn" style="display:none;">Pause</button>
+            <button id="stop-btn" style="display:none;">Stop</button>
+        </div>
+    </div>
+
+    <script>
+        const synth = window.speechSynthesis;
+        const textInput = document.getElementById('text-input');
+        const voiceSelect = document.getElementById('voice-select');
+        const playBtn = document.getElementById('play-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const stopBtn = document.getElementById('stop-btn');
+
+        let voices = [];
+        let utterance = null;
+
+        function populateVoices() {
+            voices = synth.getVoices();
+            voiceSelect.innerHTML = '<option value="">Select Voice</option>';
+            voices.forEach((voice, i) => {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' [default]' : ''}`;
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        synth.onvoiceschanged = populateVoices;
+        populateVoices();
+
+        function resetControls() {
+            pauseBtn.textContent = 'Pause';
+            pauseBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+            playBtn.disabled = false;
+        }
+
+        function startSpeaking() {
+            const text = textInput.value.trim();
+            if (!text) {
+                alert('Please enter some text first.');
+                return;
+            }
+
+            if (synth.speaking || synth.paused) {
+                synth.cancel();
+            }
+
+            utterance = new SpeechSynthesisUtterance(text);
+            if (voiceSelect.value !== '' && voices[voiceSelect.value]) {
+                utterance.voice = voices[voiceSelect.value];
+            } else if (voices.length > 0) {
+                utterance.voice = voices[0];
+            }
+
+            utterance.onend = resetControls;
+            utterance.onerror = resetControls;
+
+            synth.speak(utterance);
+
+            pauseBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'inline-block';
+            playBtn.disabled = true;
+        }
+
+        playBtn.addEventListener('click', startSpeaking);
+
+        pauseBtn.addEventListener('click', () => {
+            if (!synth.speaking && !synth.paused) return;
+            if (synth.paused) {
+                synth.resume();
+                pauseBtn.textContent = 'Pause';
+            } else {
+                synth.pause();
+                pauseBtn.textContent = 'Resume';
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            synth.cancel();
+            resetControls();
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (synth.speaking) synth.cancel();
+        });
+    </script>
+</body>
+</html>
